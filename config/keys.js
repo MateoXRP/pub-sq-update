@@ -9,8 +9,6 @@ if (process.env.NODE_ENV !== 'production') {
 // export env vars and other non-secret keys
 module.exports = {
   bithompApiKey: process.env.BITHOMP_API_KEY,
-  xummApiKey: process.env.XUMM_API_KEY,
-  xummApiSecret: process.env.XUMM_API_SECRET,
   dbUri: process.env.MONGODB_URI,
   appBaseUrl: require('./app-config').appBaseUrl,
   appWalletAddress: require('./app-config').appWalletAddress
