@@ -3,48 +3,26 @@ const { Comment } = require('../models/Comment');
 
 const { getUserId } = require('../controllers/users');
 const { getAccountTxByMarker } = require('../services/xrpl-client');
-const { findCommentByTxHash } = require('../util/comment');
 const {
   getTimestamp,
   getTxAmountData,
   parseMemoData
 } = require('../util/tx-data');
 
-const getCommentTransaction = async txHash => {
-  let targetTx = null;
-  let marker = null;
-
-  try {
-    while (!targetTx) {
-      const response = await getAccountTxByMarker(20, marker);
-
-      // look for post in tx batch
-      const target = findCommentByTxHash(response.transactions, txHash);
-
-      // if found end loop
-      if (target) {
-        targetTx = target;
-      }
-
-      marker = response.marker;
+const checkIfCommentTxExistsInDB = async (hash) =>
+  new Promise(async function (resolve, reject) {
+    try {
+      const result = await Comment.findOne({ hash });
+      resolve(!!result);
+    } catch (error) {
+      reject(error);
     }
+  });
 
-    return targetTx;
-  } catch (error) {
-    console.log(error);
-    return error;
-  }
-};
-
-const saveCommentToDB = async data => {
+const saveCommentToDB = async (data) => {
   const { Account, Amount, date, hash, Memos } = data;
 
   try {
-    const commentExists = await checkIfCommentTxExistsInDB(hash);
-    if (commentExists) {
-      return {};
-    }
-
     const user = await getUserId(Account);
 
     // parse post hash and comment content from memos field
@@ -81,27 +59,86 @@ const saveCommentToDB = async data => {
 
     post.comments.unshift(comment._id);
 
-    await post.save();
+    const updatedPost = await post.save();
 
-    // return post hash for response and client redirect
-    return { postHash: post.hash };
+    // return updated post
+    return updatedPost;
   } catch (error) {
     console.log(error);
     return error;
   }
 };
 
-const checkIfCommentTxExistsInDB = async hash =>
-  new Promise(async function (resolve, reject) {
-    try {
-      const result = await Comment.findOne({ hash });
-      resolve(!!result);
-    } catch (error) {
-      reject(error);
+const checkCommentTxAndSaveToDB = async (commentTx) => {
+  try {
+    const commentExists = await checkIfCommentTxExistsInDB(commentTx.hash);
+    if (commentExists) {
+      console.count('Comment exists');
+      return;
     }
-  });
+
+    console.log('saving comment to db');
+    const result = await saveCommentToDB(commentTx);
+    console.log('comment save result: ', result);
+
+    return result;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const getCommentTxAndUpdateDB = async (endDate) => {
+  console.log('endDate: ', endDate);
+  let endDateReached = false;
+  let marker = null;
+  try {
+    while (!endDateReached) {
+      // get batch of account tx
+      const txBatch = await getAccountTxByMarker(100, marker);
+
+      // filter for post tx
+      const commentTransactions = txBatch.transactions.filter(
+        (record) =>
+          (record.tx.TransactionType === 'Payment') &
+          (record.tx.DestinationTag === 100)
+      );
+
+      if (commentTransactions.length > 0) {
+        // map thru post tx array
+        for (i = 0; i < commentTransactions.length; i++) {
+          const result = await saveCommentTxToDB(commentTransactions[i].tx);
+          console.log('save result: ', result);
+        }
+
+        // check oldest comment in batch
+        const oldestComment =
+          commentTransactions[commentTransactions.length - 1];
+
+        const timestamp = await getTimestamp(oldestComment.tx.date);
+        console.log('oldest comment date: ', timestamp);
+
+        if (oldestComment.tx.date <= endDate) {
+          endDateReached = true;
+          console.log('End date reached');
+        } else {
+          console.log('txBatch marker: ', txBatch.marker);
+          marker = txBatch.marker;
+        }
+      } else {
+        console.log('txBatch marker: ', txBatch.marker);
+        marker = txBatch.marker;
+      }
+    }
+
+    console.log('Comments collection seeding complete');
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 module.exports = {
-  getCommentTransaction,
-  saveCommentToDB
+  checkIfCommentTxExistsInDB,
+  saveCommentToDB,
+  checkCommentTxAndSaveToDB,
+  getCommentTxAndUpdateDB
 };

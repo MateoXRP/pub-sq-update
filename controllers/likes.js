@@ -3,47 +3,26 @@ const { Like } = require('../models/Like');
 
 const { getUserId } = require('../controllers/users');
 const { getAccountTxByMarker } = require('../services/xrpl-client');
-const { findLikeByTxHash } = require('../util/like');
 const {
   getTimestamp,
   getTxAmountData,
   parseMemoData
 } = require('../util/tx-data');
 
-const getLikeTransaction = async txHash => {
-  let targetTx = null;
-  let marker = null;
-
-  try {
-    while (!targetTx) {
-      const response = await getAccountTxByMarker(20, marker);
-
-      // look for post in tx batch
-      const target = findLikeByTxHash(response.transactions, txHash);
-
-      // if found end loop
-      if (target) {
-        targetTx = target;
-      }
-
-      marker = response.marker;
+const checkIfLikeTxExistsInDB = async (hash) =>
+  new Promise(async function (resolve, reject) {
+    try {
+      const result = await Like.findOne({ hash });
+      resolve(!!result);
+    } catch (error) {
+      reject(error);
     }
+  });
 
-    return targetTx;
-  } catch (error) {
-    console.log(error);
-    return error;
-  }
-};
-
-const saveLikeToDB = async data => {
+const saveLikeToDB = async (data) => {
   const { Account, Amount, date, hash, Memos } = data;
 
   try {
-    const likeExists = await checkIfLikeTxExistsInDB(hash);
-    if (likeExists) {
-      return 'like exists, skipping...';
-    }
     const user = await getUserId(Account);
 
     // parse post hash from memos field
@@ -78,27 +57,84 @@ const saveLikeToDB = async data => {
     // save like to post record
     post.likes.unshift(like._id);
 
-    await post.save();
+    const updatedPost = await post.save();
 
-    // return post hash for response and client redirect
-    return { postHash: post.hash };
+    // return updated post
+    return updatedPost;
   } catch (error) {
     console.log(error);
     return error;
   }
 };
 
-const checkIfLikeTxExistsInDB = async hash =>
-  new Promise(async function (resolve, reject) {
-    try {
-      const result = await Like.findOne({ hash });
-      resolve(!!result);
-    } catch (error) {
-      reject(error);
+const checkLikeTxAndSaveToDB = async (like) => {
+  try {
+    const likeExists = await checkIfLikeTxExistsInDB(like.hash);
+    if (likeExists) {
+      console.count('Like exists');
+      return;
     }
-  });
+    console.log('saving like to db');
+    const result = await saveLikeToDB(like);
+    console.log('like save result: ', result);
+
+    return result;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const getLikeTxAndUpdateDB = async (endDate) => {
+  console.log('endDate: ', endDate);
+  let endDateReached = false;
+  let marker = null;
+
+  try {
+    while (!endDateReached) {
+      // get batch of account tx
+      const txBatch = await getAccountTxByMarker(100, marker);
+
+      // filter for post tx
+      const likeTransactions = txBatch.transactions.filter(
+        (record) =>
+          (record.tx.TransactionType === 'Payment') &
+          (record.tx.DestinationTag === 101)
+      );
+
+      if (likeTransactions.length > 0) {
+        // map thru post tx array
+        for (i = 0; i < likeTransactions.length; i++) {
+          const result = await saveLikeTxToDB(likeTransactions[i].tx);
+          console.log('save result: ', result);
+        }
+
+        // check oldest like in batch
+        const oldestLike = likeTransactions[likeTransactions.length - 1];
+
+        const timestamp = await getTimestamp(oldestLike.tx.date);
+        console.log('oldest like date: ', timestamp);
+
+        if (oldestLike.tx.date <= endDate) {
+          endDateReached = true;
+          console.log('End date reached');
+        } else {
+          console.log('txBatch marker: ', txBatch.marker);
+          marker = txBatch.marker;
+        }
+      } else {
+        console.log('txBatch marker: ', txBatch.marker);
+        marker = txBatch.marker;
+      }
+    }
+    console.log('Likes collection seeding complete');
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 module.exports = {
-  getLikeTransaction,
-  saveLikeToDB
+  checkIfLikeTxExistsInDB,
+  saveLikeToDB,
+  checkLikeTxAndSaveToDB,
+  getLikeTxAndUpdateDB
 };

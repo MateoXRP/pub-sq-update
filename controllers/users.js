@@ -3,7 +3,7 @@ const { User } = require('../models/User');
 const getBithompUsername = require('../services/bithomp').getBithompUsername;
 const { getUserGravatar } = require('../util/user');
 
-const getUserId = async account =>
+const getUserId = async (account) =>
   new Promise(async function (resolve, reject) {
     // console.log('account: ', account);
     try {
@@ -15,7 +15,6 @@ const getUserId = async account =>
       } else {
         // generate Gravatar URL
         const gravatarURL = await getUserGravatar(account);
-        //console.log('gravatarURL: ', gravatarURL);
 
         const userData = {
           account,
@@ -41,7 +40,7 @@ const getUserId = async account =>
     }
   });
 
-const getUserInfo = async account =>
+const getUserInfo = async (account) =>
   new Promise(async function (resolve, reject) {
     try {
       // look for exising User with account
