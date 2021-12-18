@@ -1,20 +1,21 @@
 const express = require('express');
-const connectDB = require('./services/mongodb');
 const cron = require('node-cron');
 
-const { updateDB } = require('./services/updateDB');
+const { connectDB, disconnectDB } = require('../services/mongodb');
+
+const { updateDb } = require('./controllers/update');
 
 const app = express();
 
-// connectDB();
+connectDB();
 
 // Cron - auto update stats/leaderboards
 // interval - every hour at *:59
 
 // Disable on scheduled update on test to prevent duplicating production update
 cron.schedule('59 * * * * *', function () {
-  console.log('<==== Updating database ====>');
-  updateDB();
+  console.count('<==== Updating database ====>');
+  updateDb();
 });
 
 // Initialize middleware

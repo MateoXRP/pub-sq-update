@@ -11,6 +11,6 @@ const blacklist = new Set(blacklistedTransactions);
  * @param {string} txHash
  * @return {boolean} isBlacklisted
  */
-const isBlacklisted = txHash => blacklist.has(txHash);
+const isBlacklisted = (txHash) => blacklist.has(txHash);
 
-module.exports = isBlacklisted;
+module.exports = { isBlacklisted };
