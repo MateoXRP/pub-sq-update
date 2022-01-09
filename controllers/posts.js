@@ -1,7 +1,7 @@
 const { Post } = require('../models/Post');
-const { getUserId } = require('../controllers/users');
+const { getUserId } = require('./users');
 const { getAccountTxByMarker } = require('../services/xrpl-client');
-const { isBlacklisted } = require('../util/blacklist');
+const { isBlacklisted } = require('../util/is-blacklisted');
 const {
   getTimestamp,
   getTxAmountData,
@@ -44,10 +44,10 @@ const savePostToDB = async (data) => {
     const post = await newPost.save();
 
     // return post
-    return post;
+    return { postSaved: !!post };
   } catch (error) {
     console.log(error);
-    return error;
+    return { postSaved: false };
   }
 };
 
@@ -56,29 +56,26 @@ const checkPostTxAndSaveToDB = async (postTx) => {
     const postExists = await checkIfPostTxExistsInDB(postTx.hash);
     if (postExists) {
       console.count('Post exists');
-      return;
+      return { postSaved: false };
     }
     const postBlacklisted = await isBlacklisted(postTx.hash);
     if (postBlacklisted) {
       console.count('Post blacklisted');
-      return;
+      return { postSaved: false };
     }
 
-    console.log('saving post to db');
+    const { postSaved } = await savePostToDB(postTx);
 
-    const result = await savePostToDB(postTx);
-    console.log('post save result: ', result);
-
-    return result;
+    return { postSaved };
   } catch (error) {
     console.log(error);
   }
 };
 
 const getPostTxAndUpdateDB = async (endDate) => {
-  console.log('endDate: ', endDate);
   let endDateReached = false;
   let marker = null;
+  let totalPostsSaved = 0;
 
   try {
     while (!endDateReached) {
@@ -92,21 +89,28 @@ const getPostTxAndUpdateDB = async (endDate) => {
           (record.tx.DestinationTag === 99)
       );
 
-      // map thru post tx array
-      for (i = 0; i < postTransactions.length; i++) {
-        const result = await checkPostTxAndSaveToDB(postTransactions[i].tx);
-        console.log('post save result: ', result);
+      // if post tx found, check/save
+      if (postTransactions.length > 0) {
+        // map thru post tx array
+        for (i = 0; i < postTransactions.length; i++) {
+          const { postSaved } = await checkPostTxAndSaveToDB(
+            postTransactions[i].tx
+          );
+          console.log('postSaved: ', postSaved);
+
+          if (postSaved) totalPostsSaved++;
+        }
       }
 
-      // check oldest post in batch
-      const oldestPost = postTransactions[postTransactions.length - 1];
+      // check oldest tx in batch
+      const oldestTx = txBatch.transactions[txBatch.transactions.length - 1];
 
-      const timestamp = await getTimestamp(oldestPost.tx.date);
-      console.log('oldest post date: ', timestamp);
+      console.log('oldest tx date: ', oldestTx.tx.date);
+      console.log('endDate: ', endDate);
 
-      if (oldestPost.tx.date <= endDate) {
+      if (oldestTx.tx.date <= endDate) {
         endDateReached = true;
-        console.log('End date reached');
+        console.log('End date reached: ', getTimestamp(oldestTx.tx.date));
       } else {
         console.log('txBatch marker: ', txBatch.marker);
         marker = txBatch.marker;
@@ -114,6 +118,8 @@ const getPostTxAndUpdateDB = async (endDate) => {
     }
 
     console.log('Posts collection update complete');
+    console.log('Total posts saved: ', totalPostsSaved);
+    return totalPostsSaved;
   } catch (error) {
     console.log(error);
   }

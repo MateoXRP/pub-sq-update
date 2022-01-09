@@ -1,7 +1,7 @@
 const { Post } = require('../models/Post');
 const { Like } = require('../models/Like');
 
-const { getUserId } = require('../controllers/users');
+const { getUserId } = require('./users');
 const { getAccountTxByMarker } = require('../services/xrpl-client');
 const {
   getTimestamp,
@@ -33,10 +33,7 @@ const saveLikeToDB = async (data) => {
     // content has post hash
     const post = await Post.findOne({ hash: postHash });
 
-    if (!post) {
-      const res = `Post not found, skipping...`;
-      return res;
-    }
+    if (!post) return { likeSaved: false };
 
     const likeData = {
       postId: post._id,
@@ -53,46 +50,52 @@ const saveLikeToDB = async (data) => {
 
     //  save like to DB
     const like = await newLike.save();
+    console.log('like saved: ', like);
 
     // save like to post record
     post.likes.unshift(like._id);
 
     const updatedPost = await post.save();
+    console.log('post updated: ', updatedPost);
 
-    // return updated post
-    return updatedPost;
+    const likeSaved = !!like && !!updatedPost;
+
+    // return updated status
+    return { likeSaved };
   } catch (error) {
     console.log(error);
     return error;
   }
 };
 
-const checkLikeTxAndSaveToDB = async (like) => {
+const checkLikeTxAndSaveToDB = async (likeTx) => {
   try {
-    const likeExists = await checkIfLikeTxExistsInDB(like.hash);
+    const likeExists = await checkIfLikeTxExistsInDB(likeTx.hash);
     if (likeExists) {
       console.count('Like exists');
-      return;
+      return { likeSaved: false };
     }
-    console.log('saving like to db');
-    const result = await saveLikeToDB(like);
-    console.log('like save result: ', result);
 
-    return result;
+    console.log('saving like to db');
+    const { likeSaved } = await saveLikeToDB(likeTx);
+    console.log('like saved: ', likeSaved);
+
+    return { likeSaved };
   } catch (error) {
     console.log(error);
   }
 };
 
 const getLikeTxAndUpdateDB = async (endDate) => {
-  console.log('endDate: ', endDate);
+  console.log('getLikeTxAndUpdateDB');
   let endDateReached = false;
   let marker = null;
+  let totalLikesSaved = 0;
 
   try {
     while (!endDateReached) {
       // get batch of account tx
-      const txBatch = await getAccountTxByMarker(100, marker);
+      const txBatch = await getAccountTxByMarker(20, marker);
 
       // filter for post tx
       const likeTransactions = txBatch.transactions.filter(
@@ -104,29 +107,31 @@ const getLikeTxAndUpdateDB = async (endDate) => {
       if (likeTransactions.length > 0) {
         // map thru post tx array
         for (i = 0; i < likeTransactions.length; i++) {
-          const result = await saveLikeTxToDB(likeTransactions[i].tx);
-          console.log('save result: ', result);
+          const { likeSaved } = await checkLikeTxAndSaveToDB(
+            likeTransactions[i].tx
+          );
+          console.log('likeSaved: ', likeSaved);
+
+          if (likeSaved) totalLikesSaved++;
         }
+      }
 
-        // check oldest like in batch
-        const oldestLike = likeTransactions[likeTransactions.length - 1];
+      // check oldest tx in batch
+      const oldestTx = txBatch.transactions[txBatch.transactions.length - 1];
+      console.log('oldest tx date: ', oldestTx.tx.date);
+      console.log('endDate: ', endDate);
 
-        const timestamp = await getTimestamp(oldestLike.tx.date);
-        console.log('oldest like date: ', timestamp);
-
-        if (oldestLike.tx.date <= endDate) {
-          endDateReached = true;
-          console.log('End date reached');
-        } else {
-          console.log('txBatch marker: ', txBatch.marker);
-          marker = txBatch.marker;
-        }
+      if (oldestTx.tx.date <= endDate) {
+        endDateReached = true;
+        console.log('End date reached: ', getTimestamp(oldestTx.tx.date));
       } else {
         console.log('txBatch marker: ', txBatch.marker);
         marker = txBatch.marker;
       }
     }
-    console.log('Likes collection seeding complete');
+
+    console.log('Likes collection update complete');
+    console.log('Total likes saved: ', totalLikesSaved);
   } catch (error) {
     console.log(error);
   }
