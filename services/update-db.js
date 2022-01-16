@@ -1,7 +1,7 @@
 const cron = require('node-cron');
 
-const { checkUpdateStatusAndUpdateDb } = require('./controllers/update');
-const updatingStatus = require('./config/keys').updatingStatus;
+const { checkUpdateStatusAndUpdateDb } = require('../controllers/update');
+const updatingStatus = require('../config/keys').updatingStatus;
 
 const task = cron.schedule('10 * * * * * *', async function () {
   console.count('<==== Updating database ====>');
