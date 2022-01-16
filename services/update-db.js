@@ -1,8 +1,7 @@
 const cron = require('node-cron');
 
 const { checkUpdateStatusAndUpdateDb } = require('../controllers/update');
-const updatingStatus = require('../config/keys').updatingStatus;
-const updatingPaused = require('../config/keys').updatingPaused;
+const updatingDisabled = require('../config/keys').updatingDisabled;
 
 const task = cron.schedule('10 * * * * * *', async function () {
   console.count('<==== Updating database ====>');
@@ -12,11 +11,11 @@ const task = cron.schedule('10 * * * * * *', async function () {
 });
 
 const updateDB = async () => {
-  console.log('updatingPaused: ', updatingPaused);
-  console.log(typeof updatingPaused);
-  console.log(!!updatingPaused);
+  console.log('updatingDisabled: ', updatingDisabled);
+  console.log(typeof updatingDisabled);
+  console.log(!!updatingDisabled);
 
-  if (!!updatingPaused) {
+  if (!!updatingDisabled) {
     console.log('Update disabled');
     task.stop();
   } else {
