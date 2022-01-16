@@ -1,14 +1,16 @@
 const express = require('express');
-const cron = require('node-cron');
+// const cron = require('node-cron');
 
 const { connectDB } = require('./services/mongodb');
 
-const { checkUpdateStatusAndUpdateDb } = require('./controllers/update');
-const updatingStatus = require('./config/keys').updatingStatus;
+// const { checkUpdateStatusAndUpdateDb } = require('./controllers/update');
+// const updatingStatus = require('./config/keys').updatingStatus;
+const { updateDB } = require('./services/update-db');
+
 const app = express();
 
 connectDB();
-
+updateDB();
 // Cron - auto update stats/leaderboards
 // interval - every hour at *:59
 
