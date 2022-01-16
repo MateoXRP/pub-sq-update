@@ -27,7 +27,7 @@ const saveLikeToDB = async (data) => {
 
     // parse post hash from memos field
     const postHash = parseMemoData(Memos);
-    console.log('postHash', postHash);
+    // console.log('postHash', postHash);
     const amountData = getTxAmountData(Amount);
 
     // content has post hash
@@ -50,13 +50,13 @@ const saveLikeToDB = async (data) => {
 
     //  save like to DB
     const like = await newLike.save();
-    console.log('like saved: ', like);
+    // console.log('like saved: ', like);
 
     // save like to post record
     post.likes.unshift(like._id);
 
     const updatedPost = await post.save();
-    console.log('post updated: ', updatedPost);
+    // console.log('post updated: ', updatedPost);
 
     const likeSaved = !!like && !!updatedPost;
 
@@ -72,13 +72,13 @@ const checkLikeTxAndSaveToDB = async (likeTx) => {
   try {
     const likeExists = await checkIfLikeTxExistsInDB(likeTx.hash);
     if (likeExists) {
-      console.count('Like exists');
+      // console.count('Like exists');
       return { likeSaved: false };
     }
 
-    console.log('saving like to db');
+    // console.log('saving like to db');
     const { likeSaved } = await saveLikeToDB(likeTx);
-    console.log('like saved: ', likeSaved);
+    // console.log('like saved: ', likeSaved);
 
     return { likeSaved };
   } catch (error) {
@@ -87,7 +87,7 @@ const checkLikeTxAndSaveToDB = async (likeTx) => {
 };
 
 const getLikeTxAndUpdateDB = async (endDate) => {
-  console.log('getLikeTxAndUpdateDB');
+  // console.log('getLikeTxAndUpdateDB');
   let endDateReached = false;
   let marker = null;
   let totalLikesSaved = 0;
@@ -110,7 +110,7 @@ const getLikeTxAndUpdateDB = async (endDate) => {
           const { likeSaved } = await checkLikeTxAndSaveToDB(
             likeTransactions[i].tx
           );
-          console.log('likeSaved: ', likeSaved);
+          // console.log('likeSaved: ', likeSaved);
 
           if (likeSaved) totalLikesSaved++;
         }
@@ -118,20 +118,21 @@ const getLikeTxAndUpdateDB = async (endDate) => {
 
       // check oldest tx in batch
       const oldestTx = txBatch.transactions[txBatch.transactions.length - 1];
-      console.log('oldest tx date: ', oldestTx.tx.date);
-      console.log('endDate: ', endDate);
+      // console.log('oldest tx date: ', oldestTx.tx.date);
+      // console.log('endDate: ', endDate);
 
       if (oldestTx.tx.date <= endDate) {
         endDateReached = true;
-        console.log('End date reached: ', getTimestamp(oldestTx.tx.date));
+        // console.log('End date reached: ', getTimestamp(oldestTx.tx.date));
       } else {
-        console.log('txBatch marker: ', txBatch.marker);
+        // console.log('txBatch marker: ', txBatch.marker);
         marker = txBatch.marker;
       }
     }
 
-    console.log('Likes collection update complete');
-    console.log('Total likes saved: ', totalLikesSaved);
+    console.log('Likes collection update complete...');
+    // console.log('Total likes saved: ', totalLikesSaved);
+    return totalLikesSaved;
   } catch (error) {
     console.log(error);
   }

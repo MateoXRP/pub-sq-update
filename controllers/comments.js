@@ -29,12 +29,12 @@ const saveCommentToDB = async (data) => {
     const memoData = parseMemoData(Memos);
     const commentContent = memoData.substring(65);
     const postHash = memoData.substring(0, 64);
-    console.log('postHash', postHash);
+    // console.log('postHash', postHash);
     const amountData = getTxAmountData(Amount);
 
     // content has post hash
     const post = await Post.findOne({ hash: postHash });
-    console.log('post', post);
+    // console.log('post', post);
 
     if (!post) return { commentSaved: false };
 
@@ -54,15 +54,15 @@ const saveCommentToDB = async (data) => {
 
     //  save comment to DB
     const comment = await newComment.save();
-    console.log('comment saved: ', comment);
+    // console.log('comment saved: ', comment);
 
     post.comments.unshift(comment._id);
 
     const updatedPost = await post.save();
-    console.log('post updated: ', updatedPost);
+    // console.log('post updated: ', updatedPost);
 
     const commentSaved = !!comment && !!updatedPost;
-    console.log('commentSaved: ', commentSaved);
+    // console.log('commentSaved: ', commentSaved);
 
     // return update status
     return { commentSaved };
@@ -76,13 +76,13 @@ const checkCommentTxAndSaveToDB = async (commentTx) => {
   try {
     const commentExists = await checkIfCommentTxExistsInDB(commentTx.hash);
     if (commentExists) {
-      console.count('Comment exists');
+      // console.count('Comment exists');
       return { commentSaved: false };
     }
 
-    console.log('saving comment to db');
+    // console.log('saving comment to db');
     const { commentSaved } = await saveCommentToDB(commentTx);
-    console.log('commentSaved: ', commentSaved);
+    // console.log('commentSaved: ', commentSaved);
 
     return { commentSaved };
   } catch (error) {
@@ -91,7 +91,7 @@ const checkCommentTxAndSaveToDB = async (commentTx) => {
 };
 
 const getCommentTxAndUpdateDB = async (endDate) => {
-  console.log('getCommentTxAndUpdateDB');
+  // console.log('getCommentTxAndUpdateDB');
   let endDateReached = false;
   let marker = null;
   let totalCommentsSaved = 0;
@@ -115,7 +115,7 @@ const getCommentTxAndUpdateDB = async (endDate) => {
           const { commentSaved } = await checkCommentTxAndSaveToDB(
             commentTransactions[i].tx
           );
-          console.log('commentSaved: ', commentSaved);
+          // console.log('commentSaved: ', commentSaved);
 
           if (commentSaved) totalCommentsSaved++;
         }
@@ -123,20 +123,20 @@ const getCommentTxAndUpdateDB = async (endDate) => {
 
       // check oldest tx in batch
       const oldestTx = txBatch.transactions[txBatch.transactions.length - 1];
-      console.log('oldest tx date: ', oldestTx.tx.date);
-      console.log('endDate: ', endDate);
+      // console.log('oldest tx date: ', oldestTx.tx.date);
+      // console.log('endDate: ', endDate);
 
       if (oldestTx.tx.date <= endDate) {
         endDateReached = true;
-        console.log('End date reached: ', getTimestamp(oldestTx.tx.date));
+        // console.log('End date reached: ', getTimestamp(oldestTx.tx.date));
       } else {
-        console.log('txBatch marker: ', txBatch.marker);
+        // console.log('txBatch marker: ', txBatch.marker);
         marker = txBatch.marker;
       }
     }
 
-    console.log('Comments collection update complete');
-    console.log('Total comments saved: ', totalCommentsSaved);
+    console.log('Comments collection update complete...');
+    // console.log('Total comments saved: ', totalCommentsSaved);
     return totalCommentsSaved;
   } catch (error) {
     console.log(error);

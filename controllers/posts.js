@@ -55,12 +55,12 @@ const checkPostTxAndSaveToDB = async (postTx) => {
   try {
     const postExists = await checkIfPostTxExistsInDB(postTx.hash);
     if (postExists) {
-      console.count('Post exists');
+      // console.count('Post exists');
       return { postSaved: false };
     }
     const postBlacklisted = await isBlacklisted(postTx.hash);
     if (postBlacklisted) {
-      console.count('Post blacklisted');
+      // console.count('Post blacklisted');
       return { postSaved: false };
     }
 
@@ -96,7 +96,7 @@ const getPostTxAndUpdateDB = async (endDate) => {
           const { postSaved } = await checkPostTxAndSaveToDB(
             postTransactions[i].tx
           );
-          console.log('postSaved: ', postSaved);
+          // console.log('postSaved: ', postSaved);
 
           if (postSaved) totalPostsSaved++;
         }
@@ -105,20 +105,20 @@ const getPostTxAndUpdateDB = async (endDate) => {
       // check oldest tx in batch
       const oldestTx = txBatch.transactions[txBatch.transactions.length - 1];
 
-      console.log('oldest tx date: ', oldestTx.tx.date);
-      console.log('endDate: ', endDate);
+      // console.log('oldest tx date: ', oldestTx.tx.date);
+      // console.log('endDate: ', endDate);
 
       if (oldestTx.tx.date <= endDate) {
         endDateReached = true;
-        console.log('End date reached: ', getTimestamp(oldestTx.tx.date));
+        // console.log('End date reached: ', getTimestamp(oldestTx.tx.date));
       } else {
-        console.log('txBatch marker: ', txBatch.marker);
+        // console.log('txBatch marker: ', txBatch.marker);
         marker = txBatch.marker;
       }
     }
 
-    console.log('Posts collection update complete');
-    console.log('Total posts saved: ', totalPostsSaved);
+    console.log('Posts collection update complete...');
+    // console.log('Total posts saved: ', totalPostsSaved);
     return totalPostsSaved;
   } catch (error) {
     console.log(error);
