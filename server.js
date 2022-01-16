@@ -14,10 +14,14 @@ connectDB();
 
 // Disable on scheduled update on test to prevent duplicating production update
 cron.schedule('10 * * * * * *', async function () {
-  console.count('<==== Updating database ====>');
-  console.log('timestamp: ', new Date());
+  if (process.env.UPDATING_PAUSED === true) {
+    console.log('Update disabled');
+  } else {
+    console.count('<==== Updating database ====>');
+    console.log('timestamp: ', new Date());
 
-  checkUpdateStatusAndUpdateDb();
+    checkUpdateStatusAndUpdateDb();
+  }
 });
 
 // Initialize middleware
