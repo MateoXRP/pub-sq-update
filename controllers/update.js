@@ -42,7 +42,7 @@ const createUpdateRecord = async ({
   try {
     const unixEndDate = newEndDate.getTime() / 1000 - 946684800;
     // console.log('unixEndDate:', unixEndDate);
-
+    console.log('Creating new update record');
     const newUpdate = new Update({
       nextEndDate: unixEndDate,
       totalPostsSaved,
@@ -50,7 +50,7 @@ const createUpdateRecord = async ({
       totalLikesSaved,
       lastUpdatedAt: Date.now()
     });
-
+    console.log('Saving new update record');
     const update = await newUpdate.save();
     console.log('Posts saved: ', update.totalPostsSaved);
     console.log('Comments saved: ', update.totalCommentsSaved);
