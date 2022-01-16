@@ -4,7 +4,7 @@ const cron = require('node-cron');
 const { connectDB } = require('./services/mongodb');
 
 const { checkUpdateStatusAndUpdateDb } = require('./controllers/update');
-const updatingPaused = require('./config/keys').updatingPaused;
+const updatingStatus = require('./config/keys').updatingStatus;
 const app = express();
 
 connectDB();
@@ -14,8 +14,8 @@ connectDB();
 
 // Disable on scheduled update on test to prevent duplicating production update
 cron.schedule('10 * * * * * *', async function () {
-  console.log('updatingPaused: ', updatingPaused);
-  if (updatingPaused == true) {
+  console.log('updatingStatus: ', updatingStatus);
+  if (updatingStatus == 'off') {
     console.log('Update disabled');
     return;
   } else {
