@@ -13,6 +13,7 @@ const task = cron.schedule('10 * * * * * *', async function () {
 const updateDB = async () => {
   console.log('updatingStatus: ', updatingStatus);
   console.log(updatingStatus == 'off');
+  console.log(typeof updatingStatus);
 
   if (updatingStatus == 'off') {
     console.log('Update disabled');
