@@ -57,6 +57,7 @@ const createUpdateRecord = async ({
     console.log('Likes saved: ', update.totalLikesSaved);
     console.log('Last updated at: ', update.lastUpdatedAt);
   } catch (error) {
+    console.log('update save error');
     console.log('error:', error);
   }
 };
