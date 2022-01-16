@@ -4,7 +4,7 @@ const cron = require('node-cron');
 const { connectDB } = require('./services/mongodb');
 
 const { checkUpdateStatusAndUpdateDb } = require('./controllers/update');
-const updatingPaused = require('../config/keys').updatingPaused;
+const updatingPaused = require('./config/keys').updatingPaused;
 const app = express();
 
 connectDB();
