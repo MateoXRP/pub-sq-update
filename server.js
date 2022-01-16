@@ -13,18 +13,18 @@ connectDB();
 // interval - every hour at *:59
 
 // Disable on scheduled update on test to prevent duplicating production update
-cron.schedule('10 * * * * * *', async function () {
-  console.log('updatingStatus: ', updatingStatus);
-  if (updatingStatus == 'off') {
-    console.log('Update disabled');
-    return;
-  } else {
-    console.count('<==== Updating database ====>');
-    console.log('timestamp: ', new Date());
+// cron.schedule('10 * * * * * *', async function () {
+//   console.log('updatingStatus: ', updatingStatus);
+//   if (updatingStatus == 'off') {
+//     console.log('Update disabled');
+//     return;
+//   } else {
+//     console.count('<==== Updating database ====>');
+//     console.log('timestamp: ', new Date());
 
-    checkUpdateStatusAndUpdateDb();
-  }
-});
+//     checkUpdateStatusAndUpdateDb();
+//   }
+// });
 
 // Initialize middleware
 app.use(express.json({ extended: false }));
