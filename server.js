@@ -14,7 +14,7 @@ connectDB();
 
 // Disable on scheduled update on test to prevent duplicating production update
 cron.schedule('10 * * * * * *', async function () {
-  console.log('');
+  console.log('updatingPaused: ', updatingPaused);
   if (updatingPaused === true) {
     console.log('Update disabled');
   } else {
