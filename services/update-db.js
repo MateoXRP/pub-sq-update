@@ -3,7 +3,7 @@ const cron = require('node-cron');
 const { checkUpdateStatusAndUpdateDb } = require('../controllers/update');
 const updatingDisabled = require('../config/keys').updatingDisabled;
 
-const task = cron.schedule('10 * * * * * *', async function () {
+const task = cron.schedule('1 * * * *', async function () {
   console.count('<==== Updating database ====>');
   console.log('timestamp: ', new Date());
 
