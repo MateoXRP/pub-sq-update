@@ -1,52 +1,27 @@
 const { Post } = require('../models/Post');
-const { Comment } = require('../models/Comment');
-const { Like } = require('../models/Like');
-const { Tip } = require('../models/Tip');
-const { User } = require('../models/User');
-
-const { getUserId } = require('../controllers/users');
+const { getUserId } = require('./users');
 const { getAccountTxByMarker } = require('../services/xrpl-client');
-const { findPostByTxHash } = require('../util/post');
+const { isBlacklisted } = require('../util/is-blacklisted');
 const {
   getTimestamp,
   getTxAmountData,
   parseMemoData
 } = require('../util/tx-data');
 
-const getPostTransaction = async txHash => {
-  let targetTx = null;
-  let marker = null;
-
-  try {
-    while (!targetTx) {
-      const response = await getAccountTxByMarker(20, marker);
-
-      // look for post in tx batch
-      const target = findPostByTxHash(response.transactions, txHash);
-
-      // if found end loop
-      if (target) {
-        targetTx = target;
-      }
-
-      marker = response.marker;
+const checkIfPostTxExistsInDB = async (hash) =>
+  new Promise(async function (resolve, reject) {
+    try {
+      const result = await Post.findOne({ hash });
+      resolve(!!result);
+    } catch (error) {
+      reject(error);
     }
+  });
 
-    return targetTx;
-  } catch (error) {
-    console.log(error);
-    return error;
-  }
-};
-
-const savePostToDB = async data => {
+const savePostToDB = async (data) => {
   const { Account, Amount, date, hash, Memos } = data;
 
   try {
-    const postExists = await checkIfPostTxExistsInDB(hash);
-    if (postExists) {
-      return {};
-    }
     const user = await getUserId(Account);
 
     const postContent = parseMemoData(Memos);
@@ -68,293 +43,91 @@ const savePostToDB = async data => {
     //  save post to DB
     const post = await newPost.save();
 
-    // return post hash for response and client redirect
-    return { postHash: post.hash };
+    // return post
+    return { postSaved: !!post };
   } catch (error) {
     console.log(error);
-    return error;
+    return { postSaved: false };
   }
 };
 
-// fetch posts batch
-const getPosts = async cursor => {
+const checkPostTxAndSaveToDB = async (postTx) => {
   try {
-    const posts = await Post.find()
-      .sort({ date: -1 })
-      .skip(cursor)
-      .limit(4)
-      .populate({
-        path: 'author'
-      })
-      .populate({
-        path: 'comments',
-        select: [
-          'postId',
-          'postHash',
-          'userAccount',
-          'date',
-          'hash',
-          'content'
-        ],
-        populate: {
-          path: 'user'
-        }
-      })
-      .populate({
-        path: 'likes',
-        select: ['postId', 'postHash', 'userAccount', 'date', 'hash'],
-        populate: {
-          path: 'user'
-        }
-      })
-      .populate({
-        path: 'tips',
-        select: [
-          'postId',
-          'postHash',
-          'donorAccount',
-          'recipientAccount',
-          'amount',
-          'date',
-          'hash'
-        ],
-        populate: {
-          path: 'donor'
-        },
-        populate: {
-          path: 'recipient'
-        }
-      });
-
-    //console.log('posts: ', posts);
-
-    return posts;
-  } catch (error) {
-    console.log(error);
-    return error;
-  }
-};
-
-// fetch post by postId
-const getPostById = async postId => {
-  try {
-    const post = await Post.findById(postId)
-      .populate({
-        path: 'author'
-      })
-      .populate({
-        path: 'comments',
-        select: [
-          'postId',
-          'postHash',
-          'userAccount',
-          'date',
-          'hash',
-          'content'
-        ],
-        populate: {
-          path: 'user'
-        }
-      })
-      .populate({
-        path: 'likes',
-        select: ['postId', 'postHash', 'userAccount', 'date', 'hash'],
-        populate: {
-          path: 'user'
-        }
-      })
-      .populate({
-        path: 'tips',
-        select: [
-          'postId',
-          'postHash',
-          'donorAccount',
-          'recipientAccount',
-          'amount',
-          'date',
-          'hash'
-        ],
-        populate: {
-          path: 'donor'
-        },
-        populate: {
-          path: 'recipient'
-        }
-      });
-
-    // console.log('post: ', post);
-
-    return post;
-  } catch (error) {
-    console.log(error);
-    return error;
-  }
-};
-
-// fetch post by hash
-const getPostByHash = async txHash => {
-  try {
-    const post = await Post.findOne({ hash: txHash })
-      .populate({
-        path: 'author'
-      })
-      .populate({
-        path: 'comments',
-        select: [
-          'postId',
-          'postHash',
-          'userAccount',
-          'date',
-          'hash',
-          'content'
-        ],
-        populate: {
-          path: 'user'
-        }
-      })
-      .populate({
-        path: 'likes',
-        select: ['postId', 'postHash', 'userAccount', 'date', 'hash'],
-        populate: {
-          path: 'user'
-        }
-      })
-      .populate({
-        path: 'tips',
-        select: [
-          'postId',
-          'postHash',
-          'donorAccount',
-          'recipientAccount',
-          'amount',
-          'date',
-          'hash'
-        ],
-        populate: {
-          path: 'donor'
-        },
-        populate: {
-          path: 'recipient'
-        }
-      });
-
-    // console.log('post: ', post);
-
-    return post;
-  } catch (error) {
-    console.log(error);
-    return error;
-  }
-};
-
-// fetch posts batch
-const getPostsByAccount = async (account, cursor) => {
-  try {
-    const user = await User.findOne({ account });
-
-    const posts = await Post.find({ author: user._id })
-      .sort({ date: -1 })
-      .skip(cursor)
-      .limit(4)
-      .populate({
-        path: 'author'
-      })
-      .populate({
-        path: 'comments',
-        select: [
-          'postId',
-          'postHash',
-          'userAccount',
-          'date',
-          'hash',
-          'content'
-        ],
-        populate: {
-          path: 'user'
-        }
-      })
-      .populate({
-        path: 'likes',
-        select: ['postId', 'postHash', 'userAccount', 'date', 'hash'],
-        populate: {
-          path: 'user'
-        }
-      })
-      .populate({
-        path: 'tips',
-        select: [
-          'postId',
-          'postHash',
-          'donorAccount',
-          'recipientAccount',
-          'amount',
-          'date',
-          'hash'
-        ],
-        populate: {
-          path: 'donor'
-        },
-        populate: {
-          path: 'recipient'
-        }
-      });
-
-    // console.log('posts: ', posts);
-
-    return posts;
-  } catch (error) {
-    console.log(error);
-    return error;
-  }
-};
-
-const getNextCursor = async cursor => {
-  try {
-    const postsLeft = await Post.find()
-      .sort({ date: -1 })
-      .skip(cursor)
-      .countDocuments();
-
-    return postsLeft > 0 ? cursor + 4 : null;
-  } catch (error) {
-    console.log(error);
-    return error;
-  }
-};
-
-const getAccountNextCursor = async (account, cursor) => {
-  try {
-    const user = await User.findOne({ account });
-    const postsLeft = await Post.find({ author: user._id })
-      .sort({ date: -1 })
-      .skip(cursor)
-      .countDocuments();
-
-    return postsLeft > 0 ? cursor + 4 : null;
-  } catch (error) {
-    console.log(error);
-    return error;
-  }
-};
-
-const checkIfPostTxExistsInDB = async hash =>
-  new Promise(async function (resolve, reject) {
-    try {
-      const result = await Post.findOne({ hash });
-      resolve(!!result);
-    } catch (error) {
-      reject(error);
+    const postExists = await checkIfPostTxExistsInDB(postTx.hash);
+    if (postExists) {
+      // console.count('Post exists');
+      return { postSaved: false };
     }
-  });
+    const postBlacklisted = await isBlacklisted(postTx.hash);
+    if (postBlacklisted) {
+      // console.count('Post blacklisted');
+      return { postSaved: false };
+    }
+
+    const { postSaved } = await savePostToDB(postTx);
+
+    return { postSaved };
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const getPostTxAndUpdateDB = async (endDate) => {
+  let endDateReached = false;
+  let marker = null;
+  let totalPostsSaved = 0;
+
+  try {
+    while (!endDateReached) {
+      // get batch of account tx
+      const txBatch = await getAccountTxByMarker(10, marker);
+
+      // filter for post tx
+      const postTransactions = txBatch.transactions.filter(
+        (record) =>
+          (record.tx.TransactionType === 'Payment') &
+          (record.tx.DestinationTag === 99)
+      );
+
+      // if post tx found, check/save
+      if (postTransactions.length > 0) {
+        // map thru post tx array
+        for (i = 0; i < postTransactions.length; i++) {
+          const { postSaved } = await checkPostTxAndSaveToDB(
+            postTransactions[i].tx
+          );
+          // console.log('postSaved: ', postSaved);
+
+          if (postSaved) totalPostsSaved++;
+        }
+      }
+
+      // check oldest tx in batch
+      const oldestTx = txBatch.transactions[txBatch.transactions.length - 1];
+
+      // console.log('oldest tx date: ', oldestTx.tx.date);
+      // console.log('endDate: ', endDate);
+
+      if (oldestTx.tx.date <= endDate) {
+        endDateReached = true;
+        // console.log('End date reached: ', getTimestamp(oldestTx.tx.date));
+      } else {
+        // console.log('txBatch marker: ', txBatch.marker);
+        marker = txBatch.marker;
+      }
+    }
+
+    console.log('Posts collection update complete...');
+    // console.log('Total posts saved: ', totalPostsSaved);
+    return totalPostsSaved;
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 module.exports = {
-  getPostTransaction,
+  checkIfPostTxExistsInDB,
   savePostToDB,
-  getPosts,
-  getPostById,
-  getPostByHash,
-  getPostsByAccount,
-  getNextCursor,
-  getAccountNextCursor,
-  checkIfPostTxExistsInDB
+  checkPostTxAndSaveToDB,
+  getPostTxAndUpdateDB
 };

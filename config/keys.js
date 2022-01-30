@@ -10,6 +10,9 @@ if (process.env.NODE_ENV !== 'production') {
 module.exports = {
   bithompApiKey: process.env.BITHOMP_API_KEY,
   dbUri: process.env.MONGODB_URI,
+  defaultEndDate: process.env.DEFAULT_END_DATE,
+  useDefaultEndDate: process.env.USE_DEFAULT_END_DATE,
+  updatingDisabled: process.env.UPDATING_DISABLED,
   appBaseUrl: require('./app-config').appBaseUrl,
   appWalletAddress: require('./app-config').appWalletAddress
 };
