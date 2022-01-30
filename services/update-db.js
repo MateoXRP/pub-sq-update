@@ -17,7 +17,7 @@ const task = cron.schedule(schedule, async function () {
 });
 
 const updateDB = async () => {
-  if (!!updatingDisabled) {
+  if (updatingDisabled) {
     console.log('Update disabled');
     task.stop();
   } else {

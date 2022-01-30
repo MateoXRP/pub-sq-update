@@ -15,14 +15,14 @@ const getDefaultEndDate = (defaultEndDate) => {
 const getNextEndDate = async () => {
   try {
     const lastUpdate = await Update.find().sort({ lastUpdatedAt: -1 }).limit(1);
-    if (lastUpdate.length === 0 || !!useDefaultEndDate) {
-      console.log('Using defaultEndDate: ', !!useDefaultEndDate);
+    if (lastUpdate.length === 0 || useDefaultEndDate) {
+      console.log('Using defaultEndDate: ', useDefaultEndDate);
     } else {
       console.log('Using nextEndDate: ', lastUpdate[0].nextEndDate);
     }
 
     const nextEndDate =
-      lastUpdate.length === 0 || !!useDefaultEndDate
+      lastUpdate.length === 0 || useDefaultEndDate
         ? getDefaultEndDate(defaultEndDate)
         : lastUpdate[0].nextEndDate;
 
