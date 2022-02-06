@@ -62,6 +62,23 @@ const createUpdateRecord = async ({
   }
 };
 
+const removeOldestUpdate = async () => {
+  try {
+    const oldestUpdate = await Update.find()
+      .sort({ lastUpdatedAt: 1 })
+      .limit(1);
+    console.log('Oldest update: ', oldestUpdate[0]);
+
+    const removalResult = await oldestUpdate[0].remove();
+    console.log('Update removed: ', removalResult);
+
+    console.log('Oldest update removal complete');
+  } catch (error) {
+    console.log('removeOldestUpdate error');
+    console.log('error:', error);
+  }
+};
+
 const updateDb = async () => {
   try {
     const newEndDate = new Date();
@@ -91,6 +108,8 @@ const updateDb = async () => {
       totalCommentsSaved,
       totalLikesSaved
     });
+
+    await removeOldestUpdate();
 
     // console.log('updateDB finished');
   } catch (error) {
@@ -137,4 +156,4 @@ class UpdateStatusClass {
 
 const updateStatus = new UpdateStatusClass(false);
 
-module.exports = { updateDb, checkUpdateStatusAndUpdateDb };
+module.exports = { removeOldestUpdate, updateDb, checkUpdateStatusAndUpdateDb };
