@@ -64,10 +64,10 @@ const createUpdateRecord = async ({
 
 const removeOldestUpdate = async () => {
   try {
+    console.log('Removing oldest update');
     const oldestUpdate = await Update.find()
       .sort({ lastUpdatedAt: 1 })
       .limit(1);
-    console.log('Oldest update: ', oldestUpdate[0]);
 
     const removalResult = await oldestUpdate[0].remove();
     console.log('Update removed: ', removalResult);
@@ -109,6 +109,7 @@ const updateDb = async () => {
       totalLikesSaved
     });
 
+    // remove oldest update record
     await removeOldestUpdate();
 
     // console.log('updateDB finished');
